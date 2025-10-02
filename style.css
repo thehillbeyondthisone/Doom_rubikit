@@ -1,0 +1,98 @@
+:root {
+  --bg:#0b0f15; --panel:#0f141c; --card:#121a26; --border:#1a2636; --txt:#d8e3f0; --muted:#9fb3c8;
+  --accent:#39a0ff; --accent2:#66d1ff; --shadow:rgba(0,0,0,.45);
+  --radius:16px; --mono:"Fira Code",ui-monospace,Menlo,Consolas,monospace; --sans:"Inter",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+}
+
+/* Themes */
+.theme-onyx { --bg:#0b0b0d; --panel:#111113; --card:#131316; --accent:#a8b1ff; --accent2:#d6d9ff; }
+.theme-monokai { --bg:#1a1b16; --panel:#22231d; --card:#24251f; --accent:#a6e22e; --accent2:#f92672; --txt:#f8f8f2; --muted:#bfbfbf; }
+
+*{box-sizing:border-box}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--sans);margin:0}
+
+/* Header */
+.rk-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,0))
+}
+.rk-title{display:flex;gap:12px;align-items:center}
+.rk-title h1{margin:0;font-size:18px}
+.rk-sub{margin:0;color:var(--muted);font-size:12px}
+.rk-icon{width:28px;height:28px;border-radius:8px;box-shadow:0 2px 10px var(--shadow)}
+.rk-actions{display:flex;gap:8px;align-items:center}
+.rk-sep{width:1px;height:22px;background:var(--border);opacity:.8}
+
+/* Buttons */
+.btn{
+  background:var(--accent);color:#081019;border:none;
+  padding:10px 14px;border-radius:12px;font-weight:700;cursor:pointer
+}
+.btn:hover{filter:brightness(1.05)}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--txt)}
+.btn.sm{padding:6px 10px;border-radius:10px;font-size:12px}
+
+/* Main layout */
+.rk-main{display:grid;grid-template-columns:1fr;gap:16px;padding:16px}
+
+.card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:0 12px 32px var(--shadow);padding:14px
+}
+.help h2{margin:0 0 6px 0}
+.muted{color:var(--muted);font-size:12px}
+
+/* Engine stage */
+.engine-host{
+  border:1px solid var(--border);border-radius:var(--radius);
+  overflow:hidden;background:#000;min-height:60vh
+}
+.engine-frame{width:100%;height:70vh;border:0;display:block;background:#000}
+
+/* Drawer (collapsible settings) */
+.drawer{
+  position:fixed;right:16px;top:72px;width:420px;max-width:92vw;
+  background:var(--panel);border:1px solid var(--border);border-radius:16px;
+  box-shadow:0 18px 50px var(--shadow);padding:12px;display:none;z-index:20
+}
+.drawer.open{display:block}
+.drawer-head{
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:10px
+}
+.drawer-body{display:flex;flex-direction:column;gap:12px}
+.icon{background:transparent;border:1px solid var(--border);color:var(--txt);border-radius:8px;padding:6px 10px;cursor:pointer}
+
+/* Form elements */
+.form-row{display:flex;flex-direction:column;gap:6px}
+.toggle{display:flex;align-items:center;gap:8px}
+.toggle input{width:18px;height:18px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{
+  background:#182334;border:1px solid var(--border);color:var(--txt);
+  padding:8px 10px;border-radius:999px;cursor:pointer
+}
+.chip:hover{background:#1d2a40}
+.chip.selected{outline:2px solid var(--accent)}
+
+@media (max-width:900px){
+  .drawer{right:8px;left:8px}
+}
+
+
+/* --- PalettePilot bridge & Fit defaults ---------------------------------- */
+:root { color-scheme: dark; }
+.engine-host{ position:relative; overflow:hidden; }
+.engine-frame{
+  width:100%;
+  height:auto;
+  display:block;
+  aspect-ratio: 4 / 3;   /* default DOOM ratio */
+  border:0;
+  image-rendering: pixelated;
+  background:#000;
+}
+/* When host has a fixed height (e.g., user resizes), keep iframe contained */
+.engine-host.fit .engine-frame{ width:100%; height:auto; }

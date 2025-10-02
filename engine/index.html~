@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>RubiKitOS · DOOM Engine Loader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <header class="hdr">
+    <div class="title">
+      <div class="dot"></div>
+      <h1>DOOM Engine Loader</h1>
+      <p class="sub">Drop a web DOOM port into <code>/ports/</code> and Freedoom IWADs into <code>/iwads/</code></p>
+    </div>
+    <div class="actions">
+      <button id="btnHelp" class="btn ghost">Help</button>
+      <button id="btnFullscreen" class="btn ghost">Fullscreen</button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <aside class="side card">
+      <section>
+        <h3>Status</h3>
+        <ul class="kv">
+          <li><span>Engines found</span><b id="engCount">0</b></li>
+          <li><span>IWAD hint</span><b id="iwadHint">Looking…</b></li>
+        </ul>
+      </section>
+
+      <section class="mt">
+        <h3>IWADs (put here)</h3>
+        <div class="folder">
+          <code>modules/doom/engine/iwads/</code>
+        </div>
+        <p class="muted">Place <code>freedoom1.wad</code> / <code>freedoom2.wad</code> here. Many engines will offer a file-picker if none is found.</p>
+      </section>
+
+      <section class="mt">
+        <h3>Ports (put here)</h3>
+        <div class="folder">
+          <code>modules/doom/engine/ports/&lt;engine&gt;/index.html</code>
+        </div>
+        <p class="muted">Examples: <code>ports/crispy/</code>, <code>ports/prboom/</code>, <code>ports/gzdoom/</code>. Each must be a self-contained web build with its own <code>index.html</code>.</p>
+      </section>
+    </aside>
+
+    <section class="main card">
+      <div id="help" class="help">
+        <h2>How this works</h2>
+        <ol>
+          <li>Download a **web/wasm DOOM port** and drop it into <code>/ports/&lt;name&gt;/</code> so it has an <code>index.html</code>.</li>
+          <li>Place **Freedoom** IWAD(s) in <code>/iwads/</code>: <code>freedoom1.wad</code> or <code>freedoom2.wad</code>.</li>
+          <li>Select a port below → click **Launch**. The port will run in the iframe on the right.</li>
+        </ol>
+        <p class="muted">Tip: Many ports have an in-page **“Load WAD”** button. Point it at your IWAD in <code>/iwads/</code>.</p>
+      </div>
+
+      <div class="engines">
+        <h2>Detected Ports</h2>
+        <div id="engineList" class="engine-list"></div>
+      </div>
+
+      <div class="runner">
+        <iframe id="runnerFrame" title="DOOM Port" class="runner-frame" sandbox="allow-scripts allow-same-origin allow-pointer-lock"></iframe>
+      </div>
+    </section>
+  </main>
+
+  <script src="loader.js"></script>
+</body>
+</html>
