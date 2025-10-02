@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>DOOM via js-dos</title>
+  <style>
+    :root{
+      --bg:#000; --panel:#0f141c; --card:#121a26; --border:#1a2636; --txt:#d8e3f0; --muted:#9fb3c8; --accent:#39a0ff;
+      --shadow:rgba(0,0,0,.45); --radius:16px; --mono:ui-monospace,Menlo,Consolas,monospace; --sans:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--txt);font:14px/1.4 var(--sans)}
+    /* Stage */
+    .stage{position:relative; height:100vh; padding:12px}
+    .canvas-wrap{
+      position:relative; width:100%; height:100%;
+      display:flex; align-items:center; justify-content:center;
+      background:#000; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;
+      box-shadow:0 18px 50px var(--shadow);
+    }
+    #canvas{
+      display:block; background:#000;
+      image-rendering: pixelated; image-rendering: crisp-edges;
+      /* JS sets exact px size to preserve 4:3 and chosen scale */
+    }
+    /* Floating gear (keeps stage clean) */
+    .gear{
+      position:absolute; top:16px; right:16px; z-index:10;
+      background:rgba(18,26,38,.7); border:1px solid var(--border); color:var(--txt);
+      padding:8px 10px; border-radius:12px; cursor:pointer; backdrop-filter: blur(4px);
+    }
+    .gear:hover{filter:brightness(1.08)}
+    /* Drawer (collapsible settings) */
+    .drawer{
+      position:absolute; top:16px; right:16px; z-index:20;
+      width:380px; max-width:92vw; display:none;
+      background:var(--panel); border:1px solid var(--border); border-radius:14px; box-shadow:0 18px 50px var(--shadow);
+    }
+    .drawer.open{display:block}
+    .dw-head{display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-bottom:1px solid var(--border)}
+    .dw-body{padding:10px 12px; display:flex; flex-direction:column; gap:10px}
+    .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+    label{display:block; color:var(--muted)}
+    input[type=file], select{
+      background:#0b111a; color:#e9f1ff; border:1px solid #2a3a54; border-radius:8px; padding:6px 8px
+    }
+    button{
+      background:#1b2534; color:#e9f1ff; border:1px solid #2a3a54; border-radius:10px; padding:8px 12px; cursor:pointer
+    }
+    button.primary{background:var(--accent); color:#081019; border:none; font-weight:700}
+    .muted{color:var(--muted); font-size:12px}
+    #log{
+      height:120px; background:#06090e; color:#bfe2ff; border:1px solid #22324a; border-radius:10px; padding:8px;
+      font-family:var(--mono); overflow:auto; white-space:pre-wrap
+    }
+    .ok{color:#4be38a} .warn{color:#ffcc66} .err{color:#ff7b7b}
+    @media (max-width:700px){ .drawer{right:8px; left:8px} }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="canvas-wrap" id="wrap">
+      <canvas id="canvas"></canvas>
+      <button class="gear" id="btnGear" title="Settings">⚙️</button>
+
+      <!-- Collapsible settings inside the port -->
+      <div class="drawer" id="drawer">
+        <div class="dw-head">
+          <strong>Port Settings</strong>
+          <div class="row">
+            <button id="btnFS">Fullscreen</button>
+            <button id="btnReset">Reset</button>
+            <button id="btnClose">✕</button>
+          </div>
+        </div>
+        <div class="dw-body">
+          <div class="row">
+            <label for="scaleSelect">Scale</label>
+            <select id="scaleSelect">
+              <option value="fit">Fit (auto)</option>
+              <option value="1">1× (640×480)</option>
+              <option value="2">2× (1280×960)</option>
+              <option value="3">3× (1920×1440)</option>
+              <option value="4">4× (2560×1920)</option>
+              <option value="5">5× (3200×2400)</option>
+            </select>
+            <span class="muted">Keeps 4:3 and clamps to container if too large.</span>
+          </div>
+
+          <div class="row">
+            <label>Manual EXE</label>
+            <input id="exeFile" type="file" accept=".exe"/>
+          </div>
+          <div class="row">
+            <label>Manual WAD</label>
+            <input id="wadFile" type="file" accept=".wad"/>
+          </div>
+          <div class="row">
+            <button id="manualLoad">Load EXE + WAD</button>
+            <button id="manualRun" class="primary">Run EXE</button>
+          </div>
+
+          <div class="muted">Normally this page auto-runs from the shell via postMessage. Manual controls are here if needed.</div>
+          <div id="log"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- js-dos -->
+  <script src="https://js-dos.com/6.22/current/js-dos.js"></script>
+  <script>
+    // Elements
+    const wrap = document.getElementById("wrap");
+    const canvas = document.getElementById("canvas");
+    const btnGear = document.getElementById("btnGear");
+    const drawer = document.getElementById("drawer");
+    const btnClose = document.getElementById("btnClose");
+    const btnFS = document.getElementById("btnFS");
+    const btnReset = document.getElementById("btnReset");
+    const exeFile = document.getElementById("exeFile");
+    const wadFile = document.getElementById("wadFile");
+    const manualLoadBtn = document.getElementById("manualLoad");
+    const manualRunBtn = document.getElementById("manualRun");
+    const scaleSelect = document.getElementById("scaleSelect");
+    const logEl = document.getElementById("log");
+
+    // Persisted scale
+    const LS_KEY = "rk-doom-jsdos-scale";
+    const savedScale = localStorage.getItem(LS_KEY) || "fit";
+    scaleSelect.value = savedScale;
+
+    // Emulator
+    let client=null, fsys=null, mainFn=null;
+
+    function log(msg, cls){
+      const t = new Date().toLocaleTimeString();
+      const line = document.createElement("div");
+      if (cls) line.className = cls;
+      line.textContent = `[${t}] ${msg}`;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(msg);
+    }
+
+    // Base logical resolution (we render at 640×480; scale in CSS to preserve 4:3)
+    const BASE_W = 640, BASE_H = 480;
+
+    // Compute canvas size preserving 4:3 and honoring scale setting
+    function applyScale(){
+      const mode = scaleSelect.value || "fit";
+      const W = wrap.clientWidth;
+      const H = wrap.clientHeight;
+
+      let targetW, targetH;
+
+      if (mode === "fit") {
+        // Fit to container, keep 4:3
+        targetW = W;
+        targetH = Math.round(W * 3/4);
+        if (targetH > H) {
+          targetH = H;
+          targetW = Math.round(H * 4/3);
+        }
+      } else {
+        // Nx scale of base; clamp to container if needed
+        const n = Math.max(1, Math.min(5, parseInt(mode, 10) || 1));
+        let desiredW = BASE_W * n;
+        let desiredH = BASE_H * n;
+
+        // If larger than container, proportionally shrink but keep aspect
+        const k = Math.min(W / desiredW, H / desiredH, 1);
+        targetW = Math.floor(desiredW * k);
+        targetH = Math.floor(desiredH * k);
+      }
+
+      canvas.style.width  = targetW + "px";
+      canvas.style.height = targetH + "px";
+    }
+
+    window.addEventListener("resize", applyScale);
+    new ResizeObserver(applyScale).observe(wrap);
+    scaleSelect.addEventListener("change", () => {
+      localStorage.setItem(LS_KEY, scaleSelect.value);
+      applyScale();
+    });
+
+    async function ensureDos(){
+      if (client) return;
+      client = Dos(canvas, { wdosboxUrl: "https://js-dos.com/6.22/current/wdosbox.js" });
+      await client.ready((fs, main)=>{ fsys = fs; mainFn = main; });
+      // Hint logical resolution; CSS handles displayed size
+      try { client.canvas.setSize(BASE_W, BASE_H); } catch {}
+      applyScale();
+      log("Emulator ready.", "ok");
+    }
+
+    // Drawer controls
+    btnGear.onclick = () => { drawer.classList.add("open"); setTimeout(applyScale, 0); };
+    btnClose.onclick = () => { drawer.classList.remove("open"); setTimeout(applyScale, 0); };
+    btnFS.onclick = () => wrap.requestFullscreen && wrap.requestFullscreen();
+    btnReset.onclick = async () => { if (!client) return; try { await client.exit(); } catch {}; client=null; fsys=null; mainFn=null; log("Reset complete.", "ok"); };
+
+    // Manual flow (fallback / advanced)
+    manualLoadBtn.onclick = async ()=>{
+      await ensureDos();
+      if (!exeFile.files?.[0]) { log("Pick a DOS EXE first (e.g., DOOM.EXE v1.9).", "warn"); return; }
+      const exeName = (exeFile.files[0].name || "").toUpperCase();
+      const exeBuf = new Uint8Array(await exeFile.files[0].arrayBuffer());
+      fsys.createFile(exeName, exeBuf);
+      log(`Wrote ${exeName} (${exeBuf.length.toLocaleString()} bytes)`, "ok");
+
+      if (wadFile.files?.[0]){
+        const wadBuf = new Uint8Array(await wadFile.files[0].arrayBuffer());
+        fsys.createFile("DOOM.WAD", wadBuf); // normalize name for old EXEs
+        log(`Wrote DOOM.WAD (${wadBuf.length.toLocaleString()} bytes)`, "ok");
+      } else {
+        log("No WAD selected; some EXEs may refuse to run.", "warn");
+      }
+      log("Manual load complete. Click 'Run EXE'.", "ok");
+    };
+
+    manualRunBtn.onclick = async ()=>{
+      await ensureDos();
+      const exeName = (exeFile.files?.[0]?.name || "DOOM.EXE").toUpperCase();
+      try { await mainFn(["-c", exeName]); log("Running.", "ok"); }
+      catch(e){ log("Run failed.", "err"); console.error(e); }
+    };
+
+    // Auto flow from shell
+    window.addEventListener("message", async (e)=>{
+      const d = e.data || {};
+      if (d.type === "jsdos-start"){
+        try{
+          await ensureDos();
+          const exeName = (d.exeName || "DOOM.EXE").toUpperCase();
+          if (d.exeData) {
+            fsys.createFile(exeName, new Uint8Array(d.exeData));
+            log(`Received ${exeName} (${(d.exeData.byteLength||0).toLocaleString()} bytes)`, "ok");
+          }
+          if (d.wadData) {
+            fsys.createFile("DOOM.WAD", new Uint8Array(d.wadData));
+            log(`Received DOOM.WAD (${(d.wadData.byteLength||0).toLocaleString()} bytes)`, "ok");
+          }
+          log(`Starting ${exeName}…`);
+          await mainFn(["-c", exeName]);
+          log("Running.", "ok");
+        } catch(err){
+          log("Auto start failed. See console.", "err");
+          console.error(err);
+        }
+      }
+    });
+
+    // Let parent (shell) know we’re ready to accept start payload
+    window.parent && window.parent.postMessage({ type: "jsdos-ready" }, "*");
+
+    // Initial size
+    applyScale();
+  </script>
+</body>
+</html>
